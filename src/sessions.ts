@@ -1,88 +1,62 @@
-import type { Browser, BrowserContext, Page, Locator } from "playwright-core";
-
-export interface ConsoleEntry {
-  type: string;
-  text: string;
-  timestamp: number;
-}
-
-export interface NetworkEntry {
-  method: string;
-  url: string;
-  status?: number;
-  timestamp: number;
-}
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { createConnection } from "@playwright/mcp";
 
 export interface Session {
   id: string;
   profileId: string;
-  browser: Browser;
-  context: BrowserContext;
-  activePage: Page;
-  consoleLogs: ConsoleEntry[];
-  networkRequests: NetworkEntry[];
+  client: Client;
 }
 
 export class SessionManager {
   private sessions = new Map<string, Session>();
   private currentSessionId: string | null = null;
   private nextId = 1;
+  private closeHandlers = new Map<string, () => Promise<void>>();
+  private _browserToolsRegistered = false;
+
+  get browserToolsRegistered(): boolean {
+    return this._browserToolsRegistered;
+  }
+
+  markBrowserToolsRegistered(): void {
+    this._browserToolsRegistered = true;
+  }
 
   async createSession(
-    browser: Browser,
+    cdpEndpoint: string,
     profileId: string
   ): Promise<Session> {
     const id = `session-${this.nextId++}`;
-    const context =
-      browser.contexts().length > 0
-        ? browser.contexts()[0]
-        : await browser.newContext();
-    const pages = context.pages();
-    const activePage =
-      pages.length > 0 ? pages[0] : await context.newPage();
 
-    const session: Session = {
-      id,
-      profileId,
-      browser,
-      context,
-      activePage,
-      consoleLogs: [],
-      networkRequests: [],
-    };
-
-    this.setupPageListeners(session, activePage);
-
-    context.on("page", (page) => {
-      this.setupPageListeners(session, page);
-    });
-
-    this.sessions.set(id, session);
-    this.currentSessionId = id;
-    return session;
-  }
-
-  setupPageListeners(session: Session, page: Page): void {
-    page.on("console", (msg) => {
-      session.consoleLogs.push({
-        type: msg.type(),
-        text: msg.text(),
-        timestamp: Date.now(),
+    let connection: Awaited<ReturnType<typeof createConnection>> | undefined;
+    try {
+      connection = await createConnection({
+        browser: { cdpEndpoint },
       });
-    });
-    page.on("requestfinished", async (req) => {
-      try {
-        const response = await req.response();
-        session.networkRequests.push({
-          method: req.method(),
-          url: req.url(),
-          status: response?.status(),
-          timestamp: Date.now(),
-        });
-      } catch {
-        // Request may have been aborted
-      }
-    });
+
+      const [clientTransport, serverTransport] =
+        InMemoryTransport.createLinkedPair();
+      await connection.connect(serverTransport);
+
+      const client = new Client({
+        name: "nstbrowser-internal",
+        version: "1.0.0",
+      });
+      await client.connect(clientTransport);
+
+      const session: Session = { id, profileId, client };
+      this.sessions.set(id, session);
+      this.closeHandlers.set(id, async () => {
+        await client.close();
+        await connection!.close();
+      });
+      this.currentSessionId = id;
+      return session;
+    } catch (err) {
+      await connection?.close().catch(() => {});
+      throw err;
+    }
   }
 
   getCurrent(): Session {
@@ -90,14 +64,8 @@ export class SessionManager {
       throw new Error("No active session. Call create_session first.");
     }
     const session = this.sessions.get(this.currentSessionId);
-    if (!session) {
-      throw new Error("Current session not found.");
-    }
+    if (!session) throw new Error("Current session not found.");
     return session;
-  }
-
-  getActivePage(): Page {
-    return this.getCurrent().activePage;
   }
 
   switchTo(id: string): Session {
@@ -113,47 +81,33 @@ export class SessionManager {
 
   async closeSession(id: string): Promise<void> {
     const session = this.sessions.get(id);
-    if (!session) {
-      throw new Error(`Session ${id} not found.`);
-    }
-    await session.browser.close().catch(() => {});
+    if (!session) throw new Error(`Session ${id} not found.`);
+
+    // Delete synchronously first to prevent concurrent double-close
     this.sessions.delete(id);
+    const closeHandler = this.closeHandlers.get(id);
+    this.closeHandlers.delete(id);
     if (this.currentSessionId === id) {
       const remaining = this.sessions.keys().next();
       this.currentSessionId = remaining.done ? null : remaining.value;
     }
+
+    if (closeHandler) {
+      await closeHandler().catch((err) => {
+        console.error(`Warning: error closing session ${id}:`, err);
+      });
+    }
   }
 
-  listAll(): Array<{
-    id: string;
-    profileId: string;
-    url: string;
-    isCurrent: boolean;
-  }> {
+  listAll(): Array<{ id: string; profileId: string; isCurrent: boolean }> {
     return Array.from(this.sessions.values()).map((s) => ({
       id: s.id,
       profileId: s.profileId,
-      url: s.activePage.url(),
       isCurrent: s.id === this.currentSessionId,
     }));
   }
-}
 
-export function resolveLocator(page: Page, selector: string): Locator {
-  if (selector.startsWith("text=")) {
-    return page.getByText(selector.slice(5));
+  get sessionCount(): number {
+    return this.sessions.size;
   }
-  if (selector.startsWith("role=")) {
-    const match = selector.match(
-      /^role=(\w+)(?:\[name=["']?(.+?)["']?\])?$/
-    );
-    if (match) {
-      const [, role, name] = match;
-      return page.getByRole(role as any, name ? { name } : undefined);
-    }
-  }
-  if (selector.startsWith("data-testid=")) {
-    return page.getByTestId(selector.slice(12));
-  }
-  return page.locator(selector);
 }

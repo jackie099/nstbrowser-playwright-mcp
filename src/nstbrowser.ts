@@ -1,8 +1,13 @@
-const API_KEY = process.env.NSTBROWSER_API_KEY!;
+function getApiKey(): string {
+  const key = process.env.NSTBROWSER_API_KEY;
+  if (!key) throw new Error("NSTBROWSER_API_KEY environment variable is not set");
+  return key;
+}
+
 const BASE_URL =
   process.env.NSTBROWSER_API_ADDRESS || "http://localhost:8848/api/v2";
 
-export interface NstResponse<T = any> {
+export interface NstResponse<T = unknown> {
   data: T;
   err: boolean;
   msg: string;
@@ -15,7 +20,7 @@ export interface CdpConnectionData {
   profileId: string;
 }
 
-async function nstFetch<T = any>(
+async function nstFetch<T = unknown>(
   path: string,
   options: {
     method?: string;
@@ -36,7 +41,7 @@ async function nstFetch<T = any>(
   }
 
   const headers: Record<string, string> = {
-    "x-api-key": API_KEY,
+    "x-api-key": getApiKey(),
     "Content-Type": "application/json",
   };
 
@@ -46,27 +51,36 @@ async function nstFetch<T = any>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `NSTBrowser API returned HTTP ${res.status}: ${res.statusText}${text ? ` - ${text.slice(0, 200)}` : ""}`
+    );
+  }
+
   return (await res.json()) as NstResponse<T>;
 }
 
 export async function connectToProfile(
   profileId: string,
-  config?: Record<string, any>
+  config?: Record<string, unknown>
 ): Promise<CdpConnectionData> {
   const res = await nstFetch<CdpConnectionData>(`/connect/${profileId}`, {
     params: config ? { config: JSON.stringify(config) } : undefined,
   });
   if (res.err) throw new Error(`NSTBrowser: ${res.msg}`);
+  if (!res.data) throw new Error("NSTBrowser: API returned success but no connection data");
   return res.data;
 }
 
 export async function connectOnce(
-  config: Record<string, any>
+  config: Record<string, unknown>
 ): Promise<CdpConnectionData> {
   const res = await nstFetch<CdpConnectionData>("/connect", {
     params: { config: JSON.stringify(config) },
   });
   if (res.err) throw new Error(`NSTBrowser: ${res.msg}`);
+  if (!res.data) throw new Error("NSTBrowser: API returned success but no connection data");
   return res.data;
 }
 
