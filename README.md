@@ -15,33 +15,23 @@ Built on top of the official [`@playwright/mcp`](https://github.com/microsoft/pl
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) >= 18
+- [Node.js](https://nodejs.org/) >= 20
 - [NSTBrowser](https://www.nstbrowser.io/) installed and running
 - An NSTBrowser API key
 
-## Installation
+## Quick Start
+
+### Claude Code
 
 ```bash
-npm install nstbrowser-playwright-mcp
+claude mcp add nstbrowser -- npx -y nstbrowser-playwright-mcp
 ```
 
-Or clone and build from source:
+Then set your API key in the environment or pass it via `--env`:
 
 ```bash
-git clone https://github.com/jackie099/nstbrowser-playwright-mcp.git
-cd nstbrowser-playwright-mcp
-npm install
-npm run build
+claude mcp add nstbrowser -e NSTBROWSER_API_KEY=your-api-key-here -- npx -y nstbrowser-playwright-mcp
 ```
-
-## Configuration
-
-### Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `NSTBROWSER_API_KEY` | Yes | — | Your NSTBrowser API key |
-| `NSTBROWSER_API_ADDRESS` | No | `http://localhost:8848/api/v2` | NSTBrowser API endpoint |
 
 ### Claude Desktop
 
@@ -61,9 +51,9 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-### Claude Code
+### Cursor / Windsurf
 
-Add to your Claude Code MCP settings:
+Add to your MCP settings (`.cursor/mcp.json` or Windsurf equivalent):
 
 ```json
 {
@@ -78,6 +68,24 @@ Add to your Claude Code MCP settings:
   }
 }
 ```
+
+### Install from source
+
+```bash
+git clone https://github.com/jackie099/nstbrowser-playwright-mcp.git
+cd nstbrowser-playwright-mcp
+npm install
+npm run build
+```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `NSTBROWSER_API_KEY` | Yes | — | Your NSTBrowser API key |
+| `NSTBROWSER_API_ADDRESS` | No | `http://localhost:8848/api/v2` | NSTBrowser API endpoint |
 
 ## Available Tools
 
