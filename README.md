@@ -28,7 +28,7 @@ npm install nstbrowser-playwright-mcp
 Or clone and build from source:
 
 ```bash
-git clone https://github.com/nicegram/nstbrowser-playwright-mcp.git
+git clone https://github.com/jackie099/nstbrowser-playwright-mcp.git
 cd nstbrowser-playwright-mcp
 npm install
 npm run build
