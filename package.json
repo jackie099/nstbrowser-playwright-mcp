@@ -1,6 +1,6 @@
 {
   "name": "nstbrowser-playwright-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server combining NSTBrowser profile management with Playwright browser automation via CDP",
   "type": "module",
   "main": "dist/index.js",

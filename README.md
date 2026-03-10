@@ -93,7 +93,7 @@ npm run build
 
 | Tool | Description |
 |------|-------------|
-| `create_session` | Create a browser session from an existing NSTBrowser profile or a temporary config |
+| `create_session` | Create a browser session — provide `profileId` for an existing profile, or call with no arguments to create a temporary one (all parameters are optional with sensible defaults) |
 | `list_sessions` | List all active browser sessions |
 | `switch_session` | Switch the active session |
 | `close_session` | Close a session and disconnect |
@@ -132,6 +132,20 @@ These tools are automatically available after creating your first session. They 
 | `nst_get_profiles` | List available NSTBrowser profiles |
 | `nst_get_browsers` | List running NSTBrowser instances |
 
+## `create_session` Parameters
+
+All parameters are optional. When no `profileId` is provided, a temporary profile is created. The NSTBrowser API applies sensible defaults for any omitted fields (see [NSTBrowser API docs](https://apidocs.nstbrowser.io/) for details).
+
+| Parameter | Description |
+|-----------|-------------|
+| `profileId` | Existing NSTBrowser profile ID to connect to |
+| `name` | Name for the temporary profile (used when no `profileId`) |
+| `kernel` | Browser kernel (`chromium`) |
+| `kernelMilestone` | Kernel version milestone (e.g. `128`, `130`, `132`) |
+| `platform` | Target platform: `linux`, `mac`, or `windows` |
+| `headless` | Run browser in headless mode |
+| `proxy` | Proxy string (e.g. `http://user:pass@host:port`) |
+
 ## Usage Examples
 
 ### Connect to an existing profile
@@ -141,11 +155,18 @@ Use create_session with profileId "abc123" to connect to my NSTBrowser profile,
 then navigate to https://example.com and take a screenshot.
 ```
 
-### Create a temporary session
+### Create a temporary session (no arguments needed)
 
 ```
 Create a temporary browser session and navigate to https://news.ycombinator.com.
 Get an accessibility snapshot of the page.
+```
+
+### Create a temporary session with custom settings
+
+```
+Create a session with platform "windows" and kernelMilestone "132",
+then navigate to https://example.com.
 ```
 
 ### Multi-session workflow

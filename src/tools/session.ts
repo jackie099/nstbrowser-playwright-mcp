@@ -23,7 +23,7 @@ export function registerSessionTools(
   toolRegistry.set("create_session", {
     name: "create_session",
     description:
-      "Create a browser session by connecting to an NSTBrowser profile via CDP. Provide profileId for an existing profile, or name+kernel+platform to create a temporary one.",
+      "Create a browser session by connecting to an NSTBrowser profile via CDP. Provide profileId to connect to an existing profile, or call with no arguments to create a temporary one (all parameters are optional with sensible defaults).",
     inputSchema: {
       type: "object",
       properties: {
@@ -34,12 +34,12 @@ export function registerSessionTools(
         name: {
           type: "string",
           description:
-            "Name for a temporary profile (used if no profileId)",
+            "Name for a temporary profile (used when no profileId is provided)",
         },
         kernel: {
           type: "string",
           enum: ["chromium"],
-          description: "Browser kernel (default: chromium)",
+          description: "Browser kernel",
         },
         kernelMilestone: {
           type: "string",
@@ -69,12 +69,12 @@ export function registerSessionTools(
           );
           resolvedProfileId = params.profileId;
         } else {
-          const config: Record<string, unknown> = {
-            name: params.name || "mcp-temp",
-            kernel: params.kernel || "chromium",
-            kernelMilestone: params.kernelMilestone || "128",
-            platform: params.platform || "mac",
-          };
+          const config: Record<string, unknown> = {};
+          if (params.name !== undefined) config.name = params.name;
+          if (params.kernel !== undefined) config.kernel = params.kernel;
+          if (params.kernelMilestone !== undefined)
+            config.kernelMilestone = params.kernelMilestone;
+          if (params.platform !== undefined) config.platform = params.platform;
           if (params.headless !== undefined) config.headless = params.headless;
           if (params.proxy !== undefined) config.proxy = params.proxy;
           cdpData = await connectOnce(config);
